@@ -103,10 +103,10 @@ Description: Adds a new staff member.
 JSON Body example:
 ```json
 {
-name: 'John Doe',
-joinedDate: '2020-01-01',
-baseSalary: 1000,
-type: 'manager',
+"name": "John Doe",
+"joinedDate": "2020-01-01",
+"baseSalary": 1000,
+"type": "manager"
 }
 ```
 
@@ -119,8 +119,8 @@ Description: Updates existing staff member.
 JSON Body example:
 ```json
 {
-name: 'John Doe',
-type: 'sales',
+"name": "John Doe",
+"type": "sales"
 }
 ```
 
