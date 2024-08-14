@@ -1,3 +1,4 @@
+// src/staff/staff.entity.ts
 import {
     Entity,
     PrimaryGeneratedColumn,
@@ -14,7 +15,7 @@ import {
     name: string;
   
     @Column({ type: 'date' })
-    joinedDate: string;
+    joinedDate: Date;
   
     @Column({ type: 'float' })
     baseSalary: number;

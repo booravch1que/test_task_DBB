@@ -19,7 +19,7 @@ export class StaffService {
 
   async createStaff(staffDto: {
     name: string;
-    joinedDate: string;
+    joinedDate: Date;
     baseSalary: number;
     type: string;
     supervisorId?: number;
@@ -130,64 +130,78 @@ export class StaffService {
   }
 
   private calculateEmployeeSalary(baseSalary: number, yearsWorked: number): number {
-    const maxPercentage = 0.3;
+    const maxPercentage = 0.3; 
     const salaryIncrease = Math.min(0.03 * yearsWorked, maxPercentage) * baseSalary;
     return baseSalary + salaryIncrease;
-  }
+}
 
-  private async calculateManagerSalary(staff: Staff, onDate: Date): Promise<number> {
+private async calculateManagerSalary(staff: Staff, onDate: Date): Promise<number> {
     const baseSalary = staff.baseSalary;
-    const yearsWorked = this.calculateYearsWorked(staff.joinedDate, onDate);
-    
+    const yearsWorked = this.calculateYearsWorked(staff.joinedDate.toString(), onDate);
+
     const maxPercentage = 0.4;
     const salaryIncrease = Math.min(0.05 * yearsWorked, maxPercentage) * baseSalary;
 
+
     const subordinates = await this.staffRepo.find({ where: { supervisor: { id: staff.id } } });
     const subordinatesSalaries = await Promise.all(
-      subordinates.map(sub => this.calculateSalary(sub.id, onDate))
+        subordinates.map(sub => this.calculateSalary(sub.id, onDate))
     );
     const subordinatesSalaryBonus = 0.005 * subordinatesSalaries.reduce((acc, salary) => acc + salary, 0);
 
     return baseSalary + salaryIncrease + subordinatesSalaryBonus;
-  }
+}
 
-  private async calculateSalesSalary(staff: Staff, onDate: Date): Promise<number> {
+private async calculateSalesSalary(staff: Staff, onDate: Date): Promise<number> {
     const baseSalary = staff.baseSalary;
-    const yearsWorked = this.calculateYearsWorked(staff.joinedDate, onDate);
+    const yearsWorked = this.calculateYearsWorked(staff.joinedDate.toString(), onDate);
 
-    const maxPercentage = 0.35;
+    const maxPercentage = 0.35; 
     const salaryIncrease = Math.min(0.01 * yearsWorked, maxPercentage) * baseSalary;
 
-    const subordinates = await this.staffRepo.find({ where: { supervisor: { id: staff.id } } });
-    const subordinatesSalaries = await Promise.all(
-      subordinates.map(sub => this.calculateSalary(sub.id, onDate))
-    );
-    const subordinatesSalaryBonus = 0.003 * subordinatesSalaries.reduce((acc, salary) => acc + salary, 0);
+ 
+    const subordinatesSalaries = await this.calculateRecursiveSubordinatesSalary(staff.id, onDate);
+    const subordinatesSalaryBonus = 0.003 * subordinatesSalaries;
 
     return baseSalary + salaryIncrease + subordinatesSalaryBonus;
-  }
+}
 
-  async calculateSalary(staffId: number, onDate: Date): Promise<number> {
+private async calculateRecursiveSubordinatesSalary(supervisorId: number, onDate: Date): Promise<number> {
+    const subordinates = await this.staffRepo.find({ where: { supervisor: { id: supervisorId } } });
+    const subordinatesSalaries = await Promise.all(
+        subordinates.map(sub => this.calculateSalary(sub.id, onDate))
+    );
+
+    let totalSubordinatesSalaries = subordinatesSalaries.reduce((acc, salary) => acc + salary, 0);
+
+    for (const sub of subordinates) {
+        totalSubordinatesSalaries += await this.calculateRecursiveSubordinatesSalary(sub.id, onDate);
+    }
+
+    return totalSubordinatesSalaries;
+}
+
+async calculateSalary(staffId: number, onDate: Date): Promise<number> {
     const staff = await this.staffRepo.findOne({ where: { id: staffId }, relations: ['supervisor'] });
     if (!staff) {
-      throw new NotFoundException(`Staff member with ID ${staffId} not found`);
+        throw new NotFoundException(`Staff member with ID ${staffId} not found`);
     }
 
-    const yearsWorked = this.calculateYearsWorked(staff.joinedDate, onDate);
+    const yearsWorked = this.calculateYearsWorked(staff.joinedDate.toString(), onDate);
 
     switch (staff.type) {
-      
-      case 'employee':
-        return this.calculateEmployeeSalary(staff.baseSalary, yearsWorked);
-      case 'manager':
-        return this.calculateManagerSalary(staff, onDate);
-      case 'sales':
-        return this.calculateSalesSalary(staff, onDate);
-      default:
-        console.log(staff.type);
-        throw new Error('Unknown staff type');
+        case 'employee':
+            return this.calculateEmployeeSalary(staff.baseSalary, yearsWorked);
+        case 'manager':
+            return this.calculateManagerSalary(staff, onDate);
+        case 'sales':
+            return this.calculateSalesSalary(staff, onDate);
+        default:
+            console.log(staff.type);
+            throw new Error('Unknown staff type');
     }
-  }
+}
+
 
   async calculateTotalSalaries(onDate: Date): Promise<number> {
     const staffMembers = await this.staffRepo.find();

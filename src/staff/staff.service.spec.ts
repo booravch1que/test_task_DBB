@@ -44,7 +44,7 @@ describe('StaffController', () => {
     it('should create a new staff member', async () => {
       const staffDto = {
         name: 'John Doe',
-        joinedDate: '2020-01-01',
+        joinedDate: new Date('2020-01-01'),
         baseSalary: 1000,
         type: 'manager',
       };
@@ -59,7 +59,7 @@ describe('StaffController', () => {
     it('should throw BadRequestException if supervisor is an employee', async () => {
       const staffDto = {
         name: 'John Doe',
-        joinedDate: '2020-01-01',
+        joinedDate: new Date('2020-01-01'),
         baseSalary: 1000,
         type: 'manager',
         supervisorId: 1,
@@ -74,9 +74,9 @@ describe('StaffController', () => {
   describe('updateStaff', () => {
     it('should update an existing staff member', async () => {
       const staffDto = { name: 'John Doe', type: 'manager' };
-      const updatedStaff: Staff = { id: 1, ...staffDto, joinedDate: new Date().toISOString(), baseSalary: 1000, supervisor: null };
+      const updatedStaff: Staff = { id: 1, ...staffDto, joinedDate: new Date(), baseSalary: 1000, supervisor: null };
 
-      jest.spyOn(repository, 'findOne').mockResolvedValue({ id: 1, joinedDate: new Date().toISOString(), baseSalary: 1000, supervisor: null } as any);
+      jest.spyOn(repository, 'findOne').mockResolvedValue({ id: 1, joinedDate: new Date(), baseSalary: 1000, supervisor: null } as any);
       jest.spyOn(repository, 'save').mockResolvedValue(updatedStaff);
 
       expect(await service.updateStaff(1, staffDto)).toEqual(updatedStaff);
@@ -100,7 +100,7 @@ describe('StaffController', () => {
 
   describe('calculateSalary', () => {
     it('should calculate the salary correctly for employees', async () => {
-      const staff: Staff = { id: 1, name: "Dave Free",type: 'employee', baseSalary: 1000, joinedDate: '2024-01-01', supervisor: null };
+      const staff: Staff = { id: 1, name: "Dave Free",type: 'employee', baseSalary: 1000, joinedDate: new Date('2024-01-01'), supervisor: null };
       const onDate = new Date('2024-01-01');
       jest.spyOn(repository, 'findOne').mockResolvedValue(staff);
       jest.spyOn(service as any, 'calculateEmployeeSalary').mockReturnValue(1150);
@@ -112,12 +112,13 @@ describe('StaffController', () => {
 
   describe('calculateSalary', () => {
     it('should calculate the salary correctly for staff members with subordinates after raises', async () => {
+    
       const manager: Staff = {
         id: 1,
         name: 'Alice Manager',
         type: 'manager',
         baseSalary: 1000,
-        joinedDate: '2022-01-01',
+        joinedDate: new Date('2022-01-01'),
         supervisor: null,
       };
       const subordinate: Staff = {
@@ -125,7 +126,7 @@ describe('StaffController', () => {
         name: 'Bob Subordinate',
         type: 'employee',
         baseSalary: 800,
-        joinedDate: '2022-06-01',
+        joinedDate: new Date('2022-06-01'),
         supervisor: manager,
       };
       const onDate = new Date('2024-01-01');
@@ -154,7 +155,7 @@ describe('StaffController', () => {
      
       jest.spyOn(service as any, 'calculateEmployeeSalary').mockImplementation((staffId: number, date: Date) => {
         if (staffId === subordinate.id) {
-          const yearsWorked = service.calculateYearsWorked(subordinate.joinedDate, date);
+          const yearsWorked = service.calculateYearsWorked(subordinate.joinedDate.toISOString(), date);
           const increment = Math.min(subordinate.baseSalary * (yearsWorked * subordinateSalaryIncrement), subordinate.baseSalary * maxSubordinateIncrease);
           return subordinate.baseSalary + increment;
         }
@@ -164,7 +165,7 @@ describe('StaffController', () => {
     
       const managerSalary = await service.calculateSalary(manager.id, onDate);
   
-      const yearsWorkedManager = service.calculateYearsWorked(manager.joinedDate, onDate);
+      const yearsWorkedManager = service.calculateYearsWorked(manager.joinedDate.toISOString(), onDate);
       const incrementManager = Math.min(manager.baseSalary * (yearsWorkedManager * managerSalaryIncrement), manager.baseSalary * maxManagerIncrease);
       const subSalary = await service.calculateSalary(subordinate.id, onDate);
       const subordinateBonusTotal = subordinateBonus * subSalary;
