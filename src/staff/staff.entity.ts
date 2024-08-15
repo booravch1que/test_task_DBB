@@ -1,4 +1,4 @@
-// src/staff/staff.entity.ts
+
 import {
     Entity,
     PrimaryGeneratedColumn,
